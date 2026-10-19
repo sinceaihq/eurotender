@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 
 from eurotender import cpv
 from eurotender.evaluation import (
@@ -128,6 +129,21 @@ def markdown(results: dict[str, Any]) -> str:
             lines.append(
                 f"| {b['min_confidence']:.1f} | {b['coverage']:.3f} | {fmt(b['top1_accuracy'])} |"
             )
+    sim = results.get("accuracy_by_train_similarity")
+    if sim:
+        lines += [
+            "",
+            "## Accuracy vs. similarity to the nearest training notice (test sample)",
+            "",
+            "| nearest-train cosine | n | top-1 | top-5 |",
+            "|---|---|---|---|",
+        ]
+        for b in sim:
+            lo, hi = b["cosine_range"]
+            lines.append(
+                f"| {lo:.1f}–{hi:.1f} | {b['n']:,} | {fmt(b['top1_accuracy'])} "
+                f"| {fmt(b['top5_accuracy'])} |"
+            )
     perf = results.get("performance")
     if perf:
         lines += [
@@ -196,6 +212,31 @@ def main() -> None:
             ranked, _ = rank(cnb, texts, "division")
             res["baselines"]["Complement NB (same features)"] = _report(y, ranked)
         results[split] = res
+
+    sim_path = args.out / "near_duplicate_sample.csv"
+    if sim_path.exists():
+        # Accuracy as a function of how similar a test notice is to its
+        # nearest training notice (sample from scripts/audit_data.py).
+        sims = pd.read_csv(sim_path, dtype={"notice_id": str})
+        test = load_split(args.data / "test.parquet").merge(sims, on="notice_id")
+        ranked, _ = rank(model, texts_of(test, max_desc), "division", 5)
+        y = test.cpv_division.to_numpy(dtype=object)
+        buckets = []
+        for lo, hi in ((0.0, 0.5), (0.5, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01)):
+            m = ((test.nearest_train_cosine >= lo) & (test.nearest_train_cosine < hi)).to_numpy()
+            buckets.append(
+                {
+                    "cosine_range": [lo, min(hi, 1.0)],
+                    "n": int(m.sum()),
+                    "top1_accuracy": float((ranked[m, 0] == y[m]).mean()) if m.any() else None,
+                    "top5_accuracy": float(
+                        np.mean([t in r for t, r in zip(y[m], ranked[m], strict=True)])
+                    )
+                    if m.any()
+                    else None,
+                }
+            )
+        results["accuracy_by_train_similarity"] = buckets
 
     test_texts = texts_of(load_split(args.data / "test.parquet").head(5000), max_desc)
     # Fresh process, so peak RSS reflects the model rather than this script.
