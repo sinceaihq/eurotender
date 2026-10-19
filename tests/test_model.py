@@ -58,7 +58,11 @@ def test_tfidf_requires_idf() -> None:
 
 def test_save_load_roundtrip_is_exact(tiny_model: CpvModel, tmp_path: Path) -> None:
     tiny_model.save(tmp_path)
-    assert sorted(p.name for p in tmp_path.iterdir()) == [CONFIG_NAME, WEIGHTS_NAME]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        CONFIG_NAME,
+        "group.safetensors",
+        WEIGHTS_NAME,
+    ]
     loaded = CpvModel.load(tmp_path)
     texts = [*toy_frame(1).title, "completely unrelated text", ""]
     for level in ("division", "group"):
@@ -177,3 +181,47 @@ def test_parallel_counts_matches_serial() -> None:
     par = parallel_counts(f, texts, n_jobs=2, chunk=60)
     assert (serial != par).nnz == 0
     assert par.shape == serial.shape
+
+
+def test_heads_are_stored_in_separate_files(tiny_model_dir: Path) -> None:
+    cfg = json.loads((tiny_model_dir / CONFIG_NAME).read_text())
+    assert [h["file"] for h in cfg["heads"]] == [WEIGHTS_NAME, "group.safetensors"]
+    assert (tiny_model_dir / "group.safetensors").exists()
+
+
+def test_lazy_head_loading(tiny_model: CpvModel, tiny_model_dir: Path, tmp_path: Path) -> None:
+    lazy = CpvModel.load(tiny_model_dir, levels=())
+    assert lazy.levels == ["division", "group"]
+    assert list(lazy.heads) == ["division"]  # group not read yet
+    texts = ["Road works", "Kunnan IT-palvelut"]
+    np.testing.assert_allclose(
+        lazy.predict_proba(texts, "group"), tiny_model.predict_proba(texts, "group"), rtol=1e-6
+    )
+    assert list(lazy.heads) == ["division", "group"]
+
+    # Without the group file, the head is fetched through the callback.
+    partial = tmp_path / "partial"
+    partial.mkdir()
+    for name in (CONFIG_NAME, WEIGHTS_NAME):
+        shutil.copy(tiny_model_dir / name, partial / name)
+    fetched: list[str] = []
+
+    def fetch(name: str) -> Path:
+        fetched.append(name)
+        return tiny_model_dir / name
+
+    m = CpvModel.load(partial, levels=(), fetch=fetch)
+    m.predict_proba(texts, "division")
+    assert fetched == []
+    m.predict_proba(texts, "group")
+    assert fetched == ["group.safetensors"]
+
+
+def test_missing_head_without_fetcher(tiny_model_dir: Path, tmp_path: Path) -> None:
+    for name in (CONFIG_NAME, WEIGHTS_NAME):
+        shutil.copy(tiny_model_dir / name, tmp_path / name)
+    m = CpvModel.load(tmp_path, levels=())
+    with pytest.raises(FileNotFoundError, match="group"):
+        m.head("group")
+    with pytest.raises(KeyError):
+        m.head("nope")

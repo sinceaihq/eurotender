@@ -1,12 +1,15 @@
 """Hashed TF-IDF features + linear classifiers, stored without pickle.
 
-A saved model is a directory with two files:
+A saved model is a directory with:
 
 ``config.json``
     feature settings, class lists, calibration temperatures and metadata.
 ``model.safetensors``
-    the IDF vector and, per prediction head, a sparse weight matrix (CSR,
-    features x classes) and an intercept vector.
+    the IDF vector and the first prediction head: a sparse weight matrix
+    (CSR, features x classes) and an intercept vector.
+``<head>.safetensors``
+    one file per further head (e.g. ``group.safetensors``), so that users of
+    the first head never have to download the others.
 
 Feature hashing (scikit-learn's ``HashingVectorizer``, MurmurHash3) means the
 model carries no vocabulary, and loading never executes code from the file.
@@ -15,7 +18,7 @@ model carries no vocabulary, and loading never executes code from the file.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -143,33 +146,73 @@ def softmax(z: np.ndarray) -> np.ndarray:
     return result
 
 
+# Fetches a file of the model (by name) and returns its local path; used to
+# download optional heads only when they are first needed.
+Fetcher = Callable[[str], str | Path]
+
+
+def head_file(name: str, first: bool) -> str:
+    return WEIGHTS_NAME if first else f"{name}.safetensors"
+
+
 @dataclass
 class CpvModel:
     featurizer: Featurizer
     heads: dict[str, Head]
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Heads described in config.json but not loaded yet: name -> (spec, file).
+    _pending: dict[str, tuple[dict[str, Any], Path | None]] = field(
+        default_factory=dict, repr=False
+    )
+    _fetch: Fetcher | None = field(default=None, repr=False)
 
     @property
     def levels(self) -> list[str]:
-        return list(self.heads)
+        return [*self.heads, *(n for n in self._pending if n not in self.heads)]
+
+    def head(self, level: str) -> Head:
+        """Return a prediction head, loading (or downloading) it on first use."""
+        if level in self.heads:
+            return self.heads[level]
+        if level not in self._pending:
+            raise KeyError(level)
+        spec, path = self._pending[level]
+        if path is None or not path.exists():
+            if self._fetch is None:
+                raise FileNotFoundError(f"weights for head {level!r} are not available")
+            path = Path(self._fetch(spec["file"]))
+        tensors = load_file(str(path))
+        self.heads[level] = _head_from(spec, tensors, self.featurizer.config)
+        del self._pending[level]
+        return self.heads[level]
 
     def predict_proba(self, texts: Sequence[str], level: str) -> np.ndarray:
-        return self.heads[level].proba(self.featurizer.transform(texts))
+        return self.head(level).proba(self.featurizer.transform(texts))
 
     def save(self, directory: str | Path) -> None:
+        """Write config.json, model.safetensors (IDF + first head) and one
+        ``<name>.safetensors`` per further head."""
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         if self.featurizer.idf is None:
             raise RuntimeError("cannot save a model without IDF")
-        tensors: dict[str, np.ndarray] = {"idf": self.featurizer.idf.astype(np.float32)}
+        for name in list(self._pending):
+            self.head(name)
         heads_cfg = []
-        for name, head in self.heads.items():
+        for i, (name, head) in enumerate(self.heads.items()):
             w = sp.csr_matrix(head.weights, dtype=np.float32)
             w.sort_indices()
-            tensors[f"{name}.data"] = w.data
-            tensors[f"{name}.indices"] = w.indices.astype(np.int32)
-            tensors[f"{name}.indptr"] = w.indptr.astype(np.int64)
-            tensors[f"{name}.intercept"] = head.intercept.astype(np.float32)
+            index_dtype = np.int32 if w.nnz < 2**31 else np.int64
+            tensors: dict[str, np.ndarray] = {
+                f"{name}.data": w.data,
+                f"{name}.indices": w.indices.astype(np.int32),
+                f"{name}.indptr": w.indptr.astype(index_dtype),
+                f"{name}.intercept": head.intercept.astype(np.float32),
+            }
+            if i == 0:
+                tensors["idf"] = self.featurizer.idf.astype(np.float32)
+            file = head_file(name, first=i == 0)
+            save_file(tensors, str(directory / file), metadata={"format": "eurotender"})
             heads_cfg.append(
                 {
                     "name": name,
@@ -177,9 +220,9 @@ class CpvModel:
                     "classes": head.classes,
                     "temperature": head.temperature,
                     "shape": list(w.shape),
+                    "file": file,
                 }
             )
-        save_file(tensors, str(directory / WEIGHTS_NAME), metadata={"format": "eurotender"})
         config = {
             "format_version": FORMAT_VERSION,
             "features": asdict(self.featurizer.config),
@@ -191,32 +234,60 @@ class CpvModel:
         )
 
     @classmethod
-    def load(cls, directory: str | Path) -> CpvModel:
+    def load(
+        cls,
+        directory: str | Path,
+        *,
+        levels: Sequence[str] | None = None,
+        fetch: Fetcher | None = None,
+    ) -> CpvModel:
+        """Load a saved model.
+
+        Heads stored in ``model.safetensors`` are always loaded. Other heads are
+        loaded now if listed in ``levels`` (default: all heads), otherwise on
+        first use via :meth:`head`; ``fetch`` retrieves files that are not in
+        ``directory`` (e.g. from the Hugging Face Hub).
+        """
         directory = Path(directory)
         config = json.loads((directory / CONFIG_NAME).read_text())
         if config.get("format_version") != FORMAT_VERSION:
             raise ValueError(f"unsupported model format: {config.get('format_version')}")
-        tensors = load_file(str(directory / WEIGHTS_NAME))
+        main = load_file(str(directory / WEIGHTS_NAME))
         fcfg = FeatureConfig.from_dict(config["features"])
-        idf = tensors["idf"]
+        idf = main["idf"]
         if idf.shape != (fcfg.n_features,):
             raise ValueError("IDF size does not match the feature configuration")
-        featurizer = Featurizer(fcfg, idf=idf)
-        heads: dict[str, Head] = {}
-        for h in config["heads"]:
-            name = h["name"]
-            shape = tuple(h["shape"])
-            if shape[0] != fcfg.n_features or shape[1] != len(h["classes"]):
-                raise ValueError(f"head {name!r} has inconsistent shape {shape}")
-            weights = sp.csr_matrix(
-                (tensors[f"{name}.data"], tensors[f"{name}.indices"], tensors[f"{name}.indptr"]),
-                shape=shape,
-            )
-            heads[name] = Head(
-                level=h["level"],
-                classes=list(h["classes"]),
-                weights=weights,
-                intercept=tensors[f"{name}.intercept"].astype(np.float64),
-                temperature=float(h["temperature"]),
-            )
-        return cls(featurizer=featurizer, heads=heads, metadata=config.get("metadata", {}))
+        model = cls(
+            featurizer=Featurizer(fcfg, idf=idf),
+            heads={},
+            metadata=config.get("metadata", {}),
+            _fetch=fetch,
+        )
+        for spec in config["heads"]:
+            name = spec["name"]
+            file = spec.get("file", WEIGHTS_NAME)
+            if file == WEIGHTS_NAME:
+                model.heads[name] = _head_from(spec, main, fcfg)
+            else:
+                model._pending[name] = (spec, directory / file)
+        for name in list(model._pending) if levels is None else levels:
+            model.head(name)
+        return model
+
+
+def _head_from(spec: dict[str, Any], tensors: dict[str, np.ndarray], fcfg: FeatureConfig) -> Head:
+    name = spec["name"]
+    shape = tuple(spec["shape"])
+    if shape[0] != fcfg.n_features or shape[1] != len(spec["classes"]):
+        raise ValueError(f"head {name!r} has inconsistent shape {shape}")
+    weights = sp.csr_matrix(
+        (tensors[f"{name}.data"], tensors[f"{name}.indices"], tensors[f"{name}.indptr"]),
+        shape=shape,
+    )
+    return Head(
+        level=spec["level"],
+        classes=list(spec["classes"]),
+        weights=weights,
+        intercept=tensors[f"{name}.intercept"].astype(np.float64),
+        temperature=float(spec["temperature"]),
+    )

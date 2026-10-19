@@ -155,11 +155,22 @@ def markdown(results: dict[str, Any]) -> str:
             f"p95 {perf['single_text_latency_ms']['p95']:.1f} ms",
             f"- batch throughput: {perf['batch_throughput_docs_per_s']:.0f} notices/s "
             f"(batch of {perf['batch_size']:,}, one process)",
-            f"- peak RSS of a fresh process (model + 5k texts): {perf['peak_rss_mb']:.0f} MB",
+            f"- peak RSS of a fresh process (heads loaded: "
+            f"{', '.join(perf.get('heads_loaded', []))}; 5k texts): {perf['peak_rss_mb']:.0f} MB",
             "- files: "
             + ", ".join(f"{k} {v / 1e6:.1f} MB" for k, v in perf["file_sizes_bytes"].items()),
         ]
     return "\n".join(lines) + "\n"
+
+
+def performance(model_dir: Path, data: Path) -> dict[str, Any]:
+    max_desc = CpvModel.load(model_dir, levels=()).featurizer.config.max_description_chars
+    texts = texts_of(load_split(data / "test.parquet").head(5000), max_desc)
+    # Fresh process, so peak RSS reflects the model rather than this script.
+    ctx = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
+        result: dict[str, Any] = pool.submit(measure_performance, model_dir, texts).result()
+    return result
 
 
 def main() -> None:
@@ -169,7 +180,21 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--splits", nargs="+", default=["validation", "test"])
     parser.add_argument("--skip-cnb", action="store_true", help="skip the Complement NB baseline")
+    parser.add_argument(
+        "--performance-only",
+        action="store_true",
+        help="re-measure inference performance and update an existing metrics.json",
+    )
     args = parser.parse_args()
+    if args.performance_only:
+        results = json.loads((args.out / "metrics.json").read_text())
+        results["performance"] = performance(args.model, args.data)
+        results["model_metadata"] = CpvModel.load(args.model, levels=()).metadata
+        (args.out / "metrics.json").write_text(
+            json.dumps(results, indent=2, ensure_ascii=False) + "\n"
+        )
+        (args.out / "RESULTS.md").write_text(markdown(results))
+        return
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     model = CpvModel.load(args.model)
@@ -238,11 +263,7 @@ def main() -> None:
             )
         results["accuracy_by_train_similarity"] = buckets
 
-    test_texts = texts_of(load_split(args.data / "test.parquet").head(5000), max_desc)
-    # Fresh process, so peak RSS reflects the model rather than this script.
-    ctx = multiprocessing.get_context("spawn")
-    with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
-        results["performance"] = pool.submit(measure_performance, args.model, test_texts).result()
+    results["performance"] = performance(args.model, args.data)
 
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "metrics.json").write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n")

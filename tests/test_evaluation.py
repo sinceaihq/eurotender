@@ -63,5 +63,9 @@ def test_measure_performance(tiny_model_dir: Path) -> None:
     assert perf["load_seconds"] >= 0
     assert perf["single_text_latency_ms"]["p50"] > 0
     assert perf["batch_throughput_docs_per_s"] > 0
-    assert set(perf["file_sizes_bytes"]) == {"config.json", "model.safetensors"}
+    assert set(perf["file_sizes_bytes"]) == {
+        "config.json",
+        "model.safetensors",
+        "group.safetensors",
+    }
     assert np.isfinite(perf["peak_rss_mb"])

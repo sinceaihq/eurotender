@@ -78,6 +78,7 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003"]
 "tests/*" = ["S", "N802"]
 "src/eurotender/text.py" = ["S105"]  # placeholder tokens, not passwords
 "scripts/render_cards.py" = ["E501"]  # Markdown templates
+"scripts/render_docs.py" = ["E501"]  # Markdown templates
 
 [tool.mypy]
 python_version = "3.10"

@@ -35,7 +35,7 @@ def export(model: CpvModel, out: Path, keep: int, levels: list[str]) -> dict[str
     blob = bytearray(model.featurizer.idf.astype("<f2").tobytes())
     heads = []
     for name in levels:
-        head = model.heads[name]
+        head = model.head(name)
         w = sp.csc_matrix(head.weights.T)  # classes x features -> column access
         strength = np.asarray(abs(head.weights).max(axis=1).todense()).ravel()
         n_keep = min(keep, int((strength > 0).sum()))

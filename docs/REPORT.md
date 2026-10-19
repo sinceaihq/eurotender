@@ -10,12 +10,12 @@ each tagged with a Common Procurement Vocabulary (CPV) code. CPV codes drive
 how suppliers discover tenders, yet open, reproducible models and benchmarks
 for assigning them are scarce: existing public models cover one language, do
 not document their evaluation split, or are commercial. We release (i) a
-dataset of <!-- n_rows --> eForms contract notices from 2024-01 to 2026-09 with
+dataset of <!-- n_rows:start --><!-- n_rows:end --> eForms contract notices from 2024-01 to 2026-09 with
 a temporal train/validation/test split, one row per procedure and explicit
 near-duplicate flags, (ii) a CPU-only classifier — hashed word and character
 n-gram TF-IDF with linear one-vs-rest heads — that ranks CPV divisions and
 groups with calibrated probabilities, and (iii) the full pipeline, from the TED
-API harvest to the evaluation tables. <!-- abstract_results -->
+API harvest to the evaluation tables. <!-- abstract_results:start --><!-- abstract_results:end -->
 
 ## 1. Problem and users
 
@@ -78,7 +78,7 @@ Full provenance is in [DATA.md](DATA.md); the essentials:
   reported separately; anything that looks like an 8-digit CPV code is masked
   in the model input.
 
-<!-- data_table -->
+<!-- data_table:start --><!-- data_table:end -->
 
 ## 4. Method
 
@@ -114,25 +114,25 @@ and description length. The final classifier and regularisation strength were
 then chosen on the real validation split (`scripts/tune.py`). The test split
 was used once, for the final evaluation.
 
-<!-- pilot_table -->
+<!-- pilot_table:start --><!-- pilot_table:end -->
 
-<!-- tuning_table -->
+<!-- tuning_table:start --><!-- tuning_table:end -->
 
 ## 5. Results
 
-<!-- results -->
+<!-- results:start --><!-- results:end -->
 
 ## 6. Comparison with a multilingual encoder
 
-<!-- embeddings -->
+<!-- embeddings:start --><!-- embeddings:end -->
 
 ## 7. Error analysis
 
-<!-- errors -->
+<!-- errors:start --><!-- errors:end -->
 
 ## 8. Efficiency
 
-<!-- efficiency -->
+<!-- efficiency:start --><!-- efficiency:end -->
 
 ## 9. Limitations
 

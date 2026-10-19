@@ -261,7 +261,7 @@ def rank(
     model: CpvModel, texts: Sequence[str], level: str, k: int = 5, batch: int = 4096
 ) -> tuple[np.ndarray, np.ndarray]:
     """Top-``k`` labels and probabilities for each text."""
-    head = model.heads[level]
+    head = model.head(level)
     classes = np.asarray(head.classes, dtype=object)
     k = min(k, len(classes))
     labels_out, probs_out = [], []

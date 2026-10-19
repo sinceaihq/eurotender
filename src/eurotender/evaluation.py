@@ -86,7 +86,7 @@ def evaluate_model(
         novel = ~df.near_duplicate_of_earlier_split.to_numpy(dtype=bool)
         result["novel_only"] = _report(y[novel], ranked[novel], conf[novel])
         result["novel_share"] = float(novel.mean())
-    known = set(model.heads[level].classes)
+    known = set(model.head(level).classes)
     in_scope = np.fromiter((v in known for v in y), bool, len(y))
     result["label_coverage"] = float(in_scope.mean())
 
@@ -129,7 +129,8 @@ def measure_performance(
 ) -> dict[str, Any]:
     gc.collect()
     t0 = time.perf_counter()
-    model = CpvModel.load(model_dir)
+    # What a default user loads: the main file only, further heads stay on disk.
+    model = CpvModel.load(model_dir, levels=())
     load_s = time.perf_counter() - t0
     single = []
     for text in sample_texts[:300]:
@@ -151,6 +152,8 @@ def measure_performance(
         "batch_throughput_docs_per_s": len(batch) / batch_s,
         "batch_size": len(batch),
         "peak_rss_mb": rss_mb(),
+        "level": level,
+        "heads_loaded": list(model.heads),
         "file_sizes_bytes": files,
         "cpu_count": os.cpu_count(),
     }

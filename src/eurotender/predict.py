@@ -45,17 +45,22 @@ def load_model(
     target = path_or_repo or os.environ.get(ENV_MODEL_PATH) or DEFAULT_REPO_ID
     local = Path(target).expanduser()
     if local.is_dir():
-        return CpvModel.load(local)
-    from huggingface_hub import snapshot_download
+        return CpvModel.load(local, levels=())
+    from huggingface_hub import hf_hub_download, snapshot_download
 
-    if revision is None and str(target) == DEFAULT_REPO_ID:
+    repo_id = str(target)
+    if revision is None and repo_id == DEFAULT_REPO_ID:
         revision = DEFAULT_REVISION
+    # Only the config and the main weights; further heads (e.g. the 3-digit
+    # group head) are downloaded the first time they are used.
     directory = snapshot_download(
-        repo_id=str(target),
-        revision=revision,
-        allow_patterns=[CONFIG_NAME, WEIGHTS_NAME],
+        repo_id=repo_id, revision=revision, allow_patterns=[CONFIG_NAME, WEIGHTS_NAME]
     )
-    return CpvModel.load(directory)
+
+    def fetch(filename: str) -> str:
+        return hf_hub_download(repo_id, filename, revision=revision)
+
+    return CpvModel.load(directory, levels=(), fetch=fetch)
 
 
 @lru_cache(maxsize=1)
@@ -121,9 +126,9 @@ def predict_cpv(
             raise ValueError("description is only supported for a single text")
         texts = [str(t) for t in text]
     m = model or _default_model()
-    if level not in m.heads:
+    if level not in m.levels:
         raise ValueError(f"unknown level {level!r}; available: {m.levels}")
-    head = m.heads[level]
+    head = m.head(level)
     proba = m.predict_proba(texts, level)
     k = min(top_k, proba.shape[1])
     order = np.argsort(-proba, axis=1, kind="stable")[:, :k]
