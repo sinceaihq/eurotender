@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-train = ["pandas>=2.0", "pyarrow>=14", "requests>=2.31"]
+train = ["pandas>=2.0", "pyarrow>=14", "requests>=2.31", "datasketch>=2.0"]
 dev = [
   "eurotender[train]",
   "pytest>=8",
@@ -86,7 +86,7 @@ warn_unused_ignores = true
 files = ["src/eurotender"]
 
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "scipy.*", "safetensors.*", "joblib.*"]
+module = ["sklearn.*", "scipy.*", "safetensors.*", "joblib.*", "datasketch.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -11,7 +11,8 @@ Steps, in order:
 5. Split by publication date into train / validation / test.
 6. Drop exact duplicates (same normalised text and label) within each
    split and flag evaluation rows whose text duplicates or near-duplicates
-   a row of an earlier split.
+   a row of an earlier split (digit-insensitive key, or MinHash LSH with
+   estimated character 5-gram Jaccard >= 0.8).
 
 Because step 4 keeps a single row per procedure, no procedure can span two
 splits.
@@ -37,6 +38,7 @@ import pandas as pd
 
 from .. import cpv
 from ..text import EMAIL_TOKEN, NAME_TOKEN, PHONE_TOKEN, URL_TOKEN, normalize, scrub_pii
+from . import dedup
 
 log = logging.getLogger(__name__)
 
@@ -135,7 +137,7 @@ def assign_split(date: str, splits: dict[str, tuple[str, str]]) -> str | None:
 
 
 def build(
-    raw_dir: Path, splits: dict[str, tuple[str, str]] = DEFAULT_SPLITS
+    raw_dir: Path, splits: dict[str, tuple[str, str]] = DEFAULT_SPLITS, n_jobs: int = 1
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     stats: Counter[str] = Counter()
     rows = []
@@ -181,23 +183,31 @@ def build(
     df = df.drop_duplicates(["split", "text_hash", "cpv_main"], keep="first")
     stats["dropped_exact_duplicates_within_split"] = before - len(df)
 
+    parts = [df[df.split == name].copy() for name in SPLIT_ORDER]
+    sigs = [
+        dedup.signatures(
+            [f"{t}\n{d}" for t, d in zip(p.title, p.description, strict=True)], n_jobs=n_jobs
+        )
+        for p in parts
+    ]
+    minhash_flags = dedup.flag_against_previous(sigs)
     seen_near: set[str] = set()
     seen_exact: set[str] = set()
-    flags_near, flags_exact = [], []
-    parts = []
-    for name in SPLIT_ORDER:
-        part = df[df.split == name].copy()
+    for name, part, mh in zip(SPLIT_ORDER, parts, minhash_flags, strict=True):
         part["exact_duplicate_of_earlier_split"] = part.text_hash.isin(seen_exact)
-        part["near_duplicate_of_earlier_split"] = part.near_hash.isin(seen_near)
+        key_flag = part.near_hash.isin(seen_near).to_numpy()
+        part["near_duplicate_of_earlier_split"] = key_flag | mh
         seen_exact.update(part.text_hash)
         seen_near.update(part.near_hash)
-        flags_near.append(int(part.near_duplicate_of_earlier_split.sum()))
-        flags_exact.append(int(part.exact_duplicate_of_earlier_split.sum()))
-        parts.append(part)
+        stats[f"{name}_exact_duplicate_of_earlier_split"] = int(
+            part.exact_duplicate_of_earlier_split.sum()
+        )
+        stats[f"{name}_near_duplicate_of_earlier_split"] = int(
+            part.near_duplicate_of_earlier_split.sum()
+        )
+        stats[f"{name}_near_duplicate_key_only"] = int(key_flag.sum())
+        stats[f"{name}_near_duplicate_minhash_only"] = int(mh.sum())
     df = pd.concat(parts)
-    for name, n_near, n_exact in zip(SPLIT_ORDER, flags_near, flags_exact, strict=True):
-        stats[f"{name}_near_duplicate_of_earlier_split"] = n_near
-        stats[f"{name}_exact_duplicate_of_earlier_split"] = n_exact
 
     df = df.sort_values(["publication_date", "notice_id"]).reset_index(drop=True)
     summary: dict[str, Any] = dict(stats)
@@ -238,9 +248,10 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Build the EuroTender CPV dataset.")
     parser.add_argument("--raw", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--n-jobs", type=int, default=4)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    df, summary = build(args.raw)
+    df, summary = build(args.raw, n_jobs=args.n_jobs)
     write(df, summary, args.out, args.raw)
     log.info("wrote %d rows to %s", len(df), args.out)
 

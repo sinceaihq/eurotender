@@ -27,6 +27,7 @@ TEXTS = [
     *(t for t, _, _ in TOY),
     "Contact: anna.virtanen@kunta.fi, puh. 040 123 4567 or +358 9 310 1691",
     "Tel.: +49 (0)30 1234567, www.Example.de/Vergabe?x=1",
+    "Yhteyshenkilö hanna.virtanen(at)yritys.fi, noora[AT]tuomi.fi, x @ y.fi",
     "Ansprechpartner: Frau Dr. Anna Müller, Herr Schmidt.",
     "ΟΔΟΣ ΑΘΗΝΩΝ — Straße, ﬁnance, Ǆ, İstanbul, ΣΊΣΥΦΟΣ",
     "CPV 45000000-7 Bauarbeiten; 79140, 38110, 1-7914-TK1",

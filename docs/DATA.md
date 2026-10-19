@@ -60,7 +60,8 @@ source file `e8f48fee…6301`).
    the procedure, validated against CPV 2008. Derived columns hold the
    division (2 digits), group (3) and class (4).
 3. **Contact-detail scrubbing** (`eurotender.text.scrub_pii`), applied to
-   title and description: e-mail addresses → `[EMAIL]`, URLs → `[URL]`,
+   title and description: e-mail addresses (including the obfuscated forms
+   `name(at)domain`, `name[at]domain`) → `[EMAIL]`, URLs → `[URL]`,
    international phone numbers and numbers following a telephone keyword in
    EU languages → `[PHONE]`, and names introduced by an honorific
    (Herr/Frau/Mr/Mrs/Ms/Mme/Dr/…) → `[NAME]`.
@@ -71,16 +72,29 @@ source file `e8f48fee…6301`).
    validation 2025-10-01…2025-12-31, test 2026-01-01…2026-09-30.
 6. **Exact duplicates** (same normalised text and same main CPV code) are
    dropped within a split.
-7. **Near-duplicate flags.** `exact_duplicate_of_earlier_split` and
-   `near_duplicate_of_earlier_split` mark validation/test rows whose text
-   (exactly, or after removing digits and truncating to 300 characters) also
-   occurs in an earlier split. These are legitimate in practice — buyers
+7. **Near-duplicate flags.** `exact_duplicate_of_earlier_split` marks
+   validation/test rows whose normalised text occurs in an earlier split.
+   `near_duplicate_of_earlier_split` additionally marks rows that match an
+   earlier row after removing digits and truncating to 300 characters, **or**
+   whose estimated Jaccard similarity of character 5-gram shingles with an
+   earlier row is at least 0.8 (MinHash LSH, 64 permutations,
+   [`data/dedup.py`](../src/eurotender/data/dedup.py)). These are legitimate in practice — buyers
    re-tender the same service every year — but we report metrics with and
    without them.
 8. **Label masking at model input.** Buyers sometimes paste the CPV code into
    the description ("CPV 45000000-7"). The model's normaliser replaces every
    8-digit code with a placeholder so the classifier cannot read the answer.
    The dataset itself keeps the text as published (after scrubbing).
+
+## Audit
+
+`scripts/audit_data.py` re-checks the released files and writes
+[`results/data_audit.json`](../results/data_audit.json): notice and procedure
+identifiers are disjoint across splits, every publication date lies inside
+its split window, no CPV-like code survives normalisation, and broad
+e-mail / phone patterns are counted to find what the scrubber missed. It also
+measures, for a random test sample, the TF-IDF cosine similarity to the
+nearest training notice, to check how well the near-duplicate flag works.
 
 ## Known limitations of the data
 

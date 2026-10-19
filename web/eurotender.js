@@ -15,7 +15,10 @@ const D = "\\p{Nd}";
 const S = "[\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
 const B = `(?:(?<=${W})(?!${W})|(?<!${W})(?=${W}))`;
 
-const EMAIL_RE = new RegExp(`${B}[\\p{L}\\p{N}_.+\\-]+@[\\p{L}\\p{N}_\\-]+(?:\\.[\\p{L}\\p{N}_\\-]+)+${B}`, "gu");
+const EMAIL_RE = new RegExp(
+  `${B}[\\p{L}\\p{N}_.+\\-]+ ?(?:@|\\(at\\)|\\[at\\]|\\{at\\}) ?[\\p{L}\\p{N}_\\-]+(?:\\.[\\p{L}\\p{N}_\\-]+)+${B}`,
+  "giu",
+);
 const URL_RE = new RegExp(`${B}(?:https?://|www\\.)[^${S.slice(1, -1)}<>"')]+`, "giu");
 const PHONE_INTL_RE = new RegExp(
   `(?<![\\p{L}\\p{N}_+])(?:\\+|00)[1-9]${D}{0,2}(?:${S}|[./\\-])?(?:\\(0\\)(?:${S}|[./\\-])?)?${D}{1,4}` +

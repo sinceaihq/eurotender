@@ -1,0 +1,48 @@
+{
+  "rows": {
+    "train": 510016,
+    "validation": 79714,
+    "test": 234471
+  },
+  "ids_disjoint_across_splits": true,
+  "procedures_disjoint_across_splits": true,
+  "dates_within_split_windows": true,
+  "rows_with_cpv_like_code_in_raw_text": 9904,
+  "rows_with_cpv_like_code_after_normalize": 0,
+  "residual_email_like_rows": 9,
+  "residual_phone_like_rows": 3580,
+  "residual_email_like_examples_redacted": [
+    "Kiinteistöhuolto\nHankinnan kohteena on kiinteistöhuolto Hason kaikkiin kohteisiin. Hankinta on jaettu osa-alueisiin seuraavasti: - osa-alue A sisältää 36 kohdet",
+    "Ausschreibung eines Rahmenvertrags für die Beschaffung von Büromöbeln\nDie Hansestadt Lüneburg (HLG) beabsichtigt, einen Rahmenvertrag über die Lieferung und Mon",
+    "E-Mail-Archivierung\nDas Universitätsklinikum Carl Gustav Carus (UKD, Auftraggeber) beabsichtigt die Beschaffung einer Lösung zur E-Mail-Archivierung zur flächen",
+    "Tuotantokeittiö Padan puhtauspalveluhankinta\nTuomi Logistiikka Oy kilpailuttaa Pirkanmaan Voimia Oy:n toimeksiannosta tuotantokeittiö Padan puhtauspalvelut tarj",
+    "Rahmenvertrag Redaktionelle Betreuung des <match>\nFür den Instagram-Kanal klima.bayern wird eine geeignete Social Media-Agentur gesucht. Diese soll das klima.ba"
+  ],
+  "empty_titles": 0,
+  "label_distribution_train_top10": {
+    "45000000": 90722,
+    "71000000": 56598,
+    "33000000": 47290,
+    "90000000": 34621,
+    "34000000": 26277,
+    "79000000": 25895,
+    "50000000": 23917,
+    "72000000": 22259,
+    "66000000": 12558,
+    "30000000": 12530
+  },
+  "divisions_in_test_unseen_in_train": [],
+  "test_sample_size": 3000,
+  "test_nearest_train_cosine": {
+    "p50": 0.51194303538808,
+    "p90": 0.8579149258217599,
+    "share_ge_0.9": 0.07533333333333334,
+    "share_ge_0.8": 0.13866666666666666,
+    "share_ge_0.95": 0.049
+  },
+  "heuristic_flag_vs_cosine": {
+    "flagged_share": 0.045,
+    "flagged_with_cosine_ge_0.9": 0.7481481481481481,
+    "unflagged_with_cosine_ge_0.9": 0.04363001745200698
+  }
+}

@@ -9,6 +9,10 @@ from eurotender.text import compose, mask_cpv_codes, normalize, scrub_pii
     ("raw", "expected"),
     [
         ("Contact anna.virtanen@kunta.fi today", "Contact [EMAIL] today"),
+        ("Lisätiedot: hanna.virtanen(at)yritys.fi.", "Lisätiedot: [EMAIL]."),
+        ("noora.harju-saarinen[at]tuomi.fi", "[EMAIL]"),
+        ("mail{AT}example.org", "[EMAIL]"),
+        ("rechnungseingang@ stadt.lueneburg", "[EMAIL]"),
         ("See https://example.eu/tender?id=1 now", "See [URL] now"),
         ("See www.hankinnat.fi", "See [URL]"),
         ("puh. 040 123 4567", "puh. [PHONE]"),

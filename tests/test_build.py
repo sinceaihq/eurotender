@@ -179,3 +179,26 @@ def test_write_outputs(built: tuple[pd.DataFrame, dict[str, Any], Path], tmp_pat
     stats = json.loads((out / "stats.json").read_text())
     assert stats["raw_manifests"][0]["month"] == "2025-01"
     assert set(stats["files"]) == {"train.parquet", "validation.parquet", "test.parquet"}
+
+
+def test_minhash_flags_reworded_duplicates() -> None:
+    from eurotender.data import dedup
+
+    base = (
+        "Kunnossapitopalvelut kaupungin kiinteistöille vuosille, sisältäen lämmitys-, "
+        "vesi- ja ilmanvaihtojärjestelmien huollon sekä päivystyksen ympäri vuorokauden."
+    )
+    reworded = base.replace("ympäri vuorokauden", "ympärivuorokautisesti")
+    unrelated = "Lieferung von Büromöbeln für die Stadtverwaltung einschließlich Montage."
+    sig_train = dedup.signatures([base])
+    sig_test = dedup.signatures([reworded, unrelated])
+    flags = dedup.flag_against_previous([sig_train, sig_test])
+    assert flags[0].tolist() == [False]
+    assert flags[1].tolist() == [True, False]
+
+
+def test_minhash_signatures_parallel_equals_serial() -> None:
+    from eurotender.data import dedup
+
+    texts = [f"teksti numero {i} hankinta" for i in range(50)]
+    assert (dedup.signatures(texts) == dedup.signatures(texts, n_jobs=2, chunk=20)).all()

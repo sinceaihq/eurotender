@@ -15,7 +15,11 @@ from __future__ import annotations
 import re
 import unicodedata
 
-EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b")
+# Also catches the common obfuscations "name(at)domain.fi", "name[at]domain.fi"
+# and a stray space around the "@".
+EMAIL_RE = re.compile(
+    r"\b[\w.+-]+ ?(?:@|\(at\)|\[at\]|\{at\}) ?[\w-]+(?:\.[\w-]+)+\b", re.IGNORECASE
+)
 URL_RE = re.compile(r"\b(?:https?://|www\.)[^\s<>\"')]+", re.IGNORECASE)
 # International numbers (+358 40 123 4567, 0049 30 1234567) and numbers that
 # follow a telephone keyword in any EU language (tel., puh., tél., τηλ. ...).
