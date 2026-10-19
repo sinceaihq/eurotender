@@ -1,0 +1,18 @@
+{
+  "split": "test",
+  "rows": 20000,
+  "web_model_bytes": 23876670,
+  "web_features_kept": {
+    "division": 400000
+  },
+  "top1_agreement_with_full_model": 0.9611,
+  "top5_set_agreement": 0.39895,
+  "mean_abs_top1_prob_diff": 0.043266459864032776,
+  "full_model_top1_accuracy": 0.81835,
+  "web_model_top1_accuracy": 0.81385,
+  "web_model_top5_accuracy": 0.93865,
+  "node_timing": {
+    "n": 20000,
+    "ms_per_text": 3.1740642986
+  }
+}

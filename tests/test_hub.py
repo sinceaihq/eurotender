@@ -25,7 +25,7 @@ def hub_model():  # type: ignore[no-untyped-def]
 
 def test_default_model_loads_from_pinned_revision(hub_model) -> None:  # type: ignore[no-untyped-def]
     assert hub_model.levels == ["division", "group"]
-    assert len(hub_model.heads["division"].classes) == 45
+    assert len(hub_model.head("division").classes) == 45
     assert hub_model.metadata["name"] == "eurotender-cpv-baseline"
     assert DEFAULT_REVISION == "v0.1.0"
 
@@ -68,7 +68,9 @@ def test_hub_model_accuracy_on_published_test_slice(hub_model) -> None:  # type:
     texts = [compose(t, d) for t, d in zip(df.title, df.description, strict=True)]
     preds = predict_cpv(texts, model=hub_model, top_k=1)
     acc = sum(p[0].code == y for p, y in zip(preds, df.cpv_division, strict=True)) / len(df)
-    assert acc > 0.6
+    # Full test split: 0.821 (results/metrics.json); 0.78 leaves > 4 standard
+    # errors of margin for a 2,000-notice sample.
+    assert acc > 0.78
 
 
 def test_repo_id_constant() -> None:

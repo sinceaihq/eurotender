@@ -11,7 +11,8 @@ Every year public buyers in the EU publish hundreds of thousands of tender
 notices on [TED](https://ted.europa.eu), in 24 languages. Each is tagged with a
 code from the Common Procurement Vocabulary (CPV) — 9,454 codes that decide
 which suppliers ever see the tender. EuroTender suggests those codes from the
-notice text, in any EU language, on an ordinary CPU.
+notice text, on an ordinary CPU. It accepts any EU language and has been
+evaluated on the 22 official languages that TED has enough notices in.
 
 This repository contains:
 
@@ -52,6 +53,11 @@ for p in predict_cpv("Development and maintenance of municipal IT systems", top_
 ```
 
 <!-- example:start -->
+```text
+72000000 0.995 IT services: consulting, software development, Internet and support
+45000000 0.001 Construction work
+73000000 0.001 Research and development services and related consultancy services
+```
 <!-- example:end -->
 
 ```python
@@ -77,13 +83,34 @@ eurotender predict "Supply of surgical gloves and syringes" --top-k 3 --lang de
 echo "Asphaltarbeiten Ortsdurchfahrt" | eurotender predict --json
 ```
 
-The first call downloads the model (pinned to the release tag) from the
-Hugging Face Hub and caches it. Set `EUROTENDER_MODEL=/path/to/model` to use a
+The first call downloads the model (pinned to the release tag, about 110 MB)
+from the Hugging Face Hub and caches it; the 3-digit group head (about 275 MB)
+is only downloaded the first time `level="group"` is used. Set `EUROTENDER_MODEL=/path/to/model` to use a
 local copy, e.g. in an air-gapped environment.
 
 ## Results
 
 <!-- results:start -->
+Test split: 234,471 notices published January–September 2026, after the training period.
+
+| CPV level | top-1 | top-3 | top-5 | macro-F1 |
+|---|---|---|---|---|
+| division (2-digit, 45 classes) | 82.1 % | 92.0 % | 94.2 % | 67.1 |
+| division, novel notices only¹ | 80.9 % | 91.4 % | 93.8 % | 65.6 |
+| group (3-digit, 304 classes) | 65.0 % | 80.3 % | 84.1 % | 44.1 |
+
+¹ excluding the 9.7 % of test notices that duplicate or nearly duplicate an earlier notice.
+
+| system (CPV division, test) | top-1 | top-5 | macro-F1 | weighted-F1 |
+|---|---|---|---|---|
+| majority class | 17.4 | 50.0 | 0.7 | 5.2 |
+| CPV-label similarity (zero-shot) | 34.1 | 69.8 | 23.0 | 36.7 |
+| Complement NB (same features) | 61.5 | 88.6 | 39.4 | 58.9 |
+| **EuroTender** | **82.1** | **94.2** | **67.1** | **81.5** |
+
+Single notice on one CPU core: p50 2 ms; batch throughput
+661 notices/s; download 110 MB
+(+275 MB for the group head, fetched on first use).
 <!-- results:end -->
 
 Numbers are produced by [`scripts/evaluate.py`](scripts/evaluate.py) on notices
@@ -121,14 +148,19 @@ score the CPV divisions and groups; a temperature fitted on held-out data turns
 scores into probabilities. Weights are sparse and stored in `safetensors`, so
 loading a model never executes code.
 
-We chose this over a fine-tuned transformer deliberately: it trains in minutes
-on a CPU, answers in milliseconds, is easy to audit and was competitive in our
-controlled comparison (see the [report](docs/REPORT.md#comparison-with-a-multilingual-encoder)).
+We chose this over a transformer deliberately: it trains on a CPU, answers in
+milliseconds and is easy to audit. In a controlled comparison on the same data
+it was also more accurate at top-1 than a frozen multilingual encoder
+(multilingual-e5-small + logistic regression) and about 36× faster; the encoder
+was marginally better at top-5. See the
+[report](docs/REPORT.md#6-comparison-with-a-multilingual-encoder).
 
 ## Limitations
 
 CPV codes are chosen by buyers and are not always consistent, so no model can
-reach 100 %. Only the 2-digit division and 3-digit group are predicted.
+reach 100 %. Only the 2-digit division and 3-digit group are predicted. Very
+short or generic inputs ("Lot 3", "Supplies") can get confident but
+meaningless suggestions; give the model a real title or description.
 Accuracy varies by language and sector — check the tables before relying on it
 for your use case — and suggestions are meant to be reviewed by a person.
 Details in the [model card](https://huggingface.co/sinceaihq/eurotender-cpv-baseline).

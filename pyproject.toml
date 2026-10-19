@@ -63,7 +63,7 @@ Dataset = "https://huggingface.co/datasets/sinceaihq/eurotender-cpv"
 packages = ["src/eurotender"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "scripts", "docs", "README.md", "LICENSE", "NOTICE", "CHANGELOG.md"]
+include = ["/src", "/tests", "/scripts", "/docs", "/configs", "/README.md", "/LICENSE", "/NOTICE", "/CHANGELOG.md"]
 
 [tool.ruff]
 line-length = 100

@@ -175,7 +175,8 @@ Test split: {o["n"]:,} notices published January–September 2026, after the tra
 {baseline_table(test)}
 
 Single notice on one CPU core: p50 {perf["single_text_latency_ms"]["p50"]:.0f} ms; batch throughput
-{perf["batch_throughput_docs_per_s"]:,.0f} notices/s; model files {sum(perf["file_sizes_bytes"].values()) / 1e6:.0f} MB.
+{perf["batch_throughput_docs_per_s"]:,.0f} notices/s; download {perf["file_sizes_bytes"]["model.safetensors"] / 1e6:.0f} MB
+(+{perf["file_sizes_bytes"]["group.safetensors"] / 1e6:.0f} MB for the group head, fetched on first use).
 """
     readme = fill(readme, "results", headline)
     (ROOT / "README.md").write_text(readme)

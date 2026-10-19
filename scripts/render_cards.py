@@ -110,7 +110,8 @@ def render_model_card(
     grp = test["model"].get("group")
     meta = results["model_metadata"]
     perf = results["performance"]
-    langs = sorted(ISO3_TO_ISO1[x] for x in stats["languages"] if x in ISO3_TO_ISO1)
+    # Only languages the model was actually evaluated on.
+    langs = sorted(ISO3_TO_ISO1[x] for x in div["per_language"] if x in ISO3_TO_ISO1)
     front = {
         "language": langs,
         "license": "apache-2.0",
@@ -152,6 +153,10 @@ Group-level label coverage: {pct(grp["label_coverage"])} % of test notices have 
 group seen at least {hp["min_class_count"]} times in training (the rest count as errors).
 """
     sp = stats["splits"]
+    omitted = sorted(
+        set(stats["languages"]) - set(div["per_language"]), key=lambda x: LANG_NAMES.get(x, x)
+    )
+    omitted_langs = " and ".join(LANG_NAMES.get(x, x) for x in omitted) or "no languages"
     return f"""---
 {yaml_dump(front)}
 ---
@@ -159,7 +164,8 @@ group seen at least {hp["min_class_count"]} times in training (the rest count as
 # EuroTender CPV baseline
 
 **Suggests Common Procurement Vocabulary (CPV) codes for European public
-procurement notices, in all 24 official EU languages, on a CPU.**
+procurement notices, on a CPU. Accepts text in any EU language; evaluated on
+{len(div["per_language"])} of the 24 official languages.**
 
 Given the title (and optionally the description) of a tender, the model ranks
 CPV *divisions* (2-digit, 45 classes) and CPV *groups* (3-digit) with
@@ -185,7 +191,9 @@ for p in predict_cpv("Development and maintenance of municipal IT systems", top_
     print(p.code, round(p.score, 3), p.label)
 ```
 
-The package downloads this repository (pinned to tag `v0.1.0`) on first use.
+The package downloads `config.json` and `model.safetensors` (pinned to tag
+`v0.1.0`, {perf["file_sizes_bytes"]["model.safetensors"] / 1e6:.0f} MB) on first use; `group.safetensors`
+({perf["file_sizes_bytes"].get("group.safetensors", 0) / 1e6:.0f} MB) only when a group prediction is first requested.
 Labels can be returned in any EU language (`lang="fi"`, `"de"`, …), batches
 are supported (`predict_cpv([...])`) and `level="group"` gives 3-digit
 suggestions. There is also a CLI: `eurotender predict "Road resurfacing works"`.
@@ -204,8 +212,9 @@ determinations, or for inferring anything about individual people.
 
 All numbers are from `scripts/evaluate.py` on the temporal test split; the
 model never saw any notice published after 2025-09-30. *Novel only* excludes
-test notices whose text (ignoring digits) also appears in the training or
-validation period — buyers often re-tender the same thing every year, so
+test notices that duplicate or nearly duplicate a notice from the training or
+validation period (same text ignoring digits, or estimated character 5-gram
+Jaccard similarity ≥ 0.8) — buyers often re-tender the same thing every year, so
 "all" reflects real-world use and "novel only" is the harder, conservative number.
 
 **CPV division (2-digit, {len(heads["division"]["classes"])} classes), test split**
@@ -229,8 +238,8 @@ probability is at least a threshold:
 |---|---|---|
 {conf_rows}
 
-**Per language (CPV division, test split).** Every official EU language was
-evaluated; languages with fewer than 50 test notices are omitted.
+**Per language (CPV division, test split).** {len(div["per_language"])} languages have at least 50
+test notices and are listed; {omitted_langs} have too few notices on TED to be evaluated.
 
 {lang_table(div["per_language"])}
 
@@ -249,8 +258,9 @@ title + description (≤ {feats["max_description_chars"]} chars)
   → linear one-vs-rest heads ({hp["classifier"]}, alpha={hp["alpha"]}) → softmax with fitted temperature
 ```
 
-- Weights are stored in `model.safetensors` (sparse CSR, float32) and settings
-  in `config.json`. Loading never unpickles anything.
+- Weights are stored as sparse CSR float32 matrices in `model.safetensors`
+  (IDF + division head) and `group.safetensors` (group head); settings are in
+  `config.json`. Loading never unpickles anything.
 - Feature hashing means no vocabulary file; the hashing function is
   scikit-learn's MurmurHash3 and is pinned by a regression test.
 - Temperatures (division T={heads["division"]["temperature"]:.3f}{f", group T={heads['group']['temperature']:.3f}" if "group" in heads else ""}) were fitted on the
@@ -262,7 +272,7 @@ title + description (≤ {feats["max_description_chars"]} chars)
 |---|---|
 | Training notices | {meta["dataset"]["train_rows_used"]:,} (train split) |
 | Calibration | validation split, {sp["validation"]["rows"]:,} notices |
-| Hyperparameters | classifier `{hp["classifier"]}`, alpha `{hp["alpha"]}`, min. class count {hp["min_class_count"]}, weight pruning \\|w\\| < {hp["prune_threshold"]} |
+| Hyperparameters | classifier `{hp["classifier"]}`, alpha `{hp["alpha"]}`, min. class count {hp["min_class_count"]}, weight pruning \\|w\\| < {meta["pruning"]["division"]["threshold"]} (division) / {meta["pruning"]["group"]["threshold"]} (group), chosen on validation |
 | Seed | {hp["seed"]} |
 | Training time | {meta["timings_seconds"]["total"] / 60:.0f} min on {meta["hardware"].get("cpu_model", "CPU")} ({hp["n_jobs"]} jobs) |
 | Libraries | scikit-learn {meta["versions"]["scikit_learn"]}, numpy {meta["versions"]["numpy"]}, scipy {meta["versions"]["scipy"]} |
@@ -280,13 +290,18 @@ title + description (≤ {feats["max_description_chars"]} chars)
 
 - **Labels are buyer-assigned** and partly inconsistent between buyers, so
   part of the measured error is label noise rather than model error.
-- **Division and group only.** Full 8-digit codes are not predicted.
-- **Short or generic titles** ("Services", "Lot 3") carry little signal;
-  confidence is low for them and should be treated as such.
+- **Division and group only.** Full 8-digit codes are not predicted. When a
+  buyer gave only a division-level code (e.g. `79000000`), the group target is
+  that same code, so the group head also contains such division-level classes.
+- **Short or generic inputs can be confidently wrong.** Some get low
+  probabilities ("Services" → 0.25), but others inherit a strong sector prior
+  from the training data ("Lot 3" → 45 *Construction work* at 0.96, "Dostawa"
+  ["delivery"] → 33 at 0.92). Calibration is measured on real notices, not on
+  such fragments; give the model a substantive title or description.
 - **Rare classes** are learned less well, which is why macro-F1 is well below
   accuracy. Groups with fewer than {hp["min_class_count"]} training notices are not predicted.
-- **Language skew.** Accuracy differs by language (table above); languages
-  with little TED volume (Irish, Maltese) are effectively untested.
+- **Language skew.** Accuracy differs by language (table above); {omitted_langs}
+  are effectively untested because TED has almost no notices in them.
 - **Drift.** Procurement vocabulary changes; the model reflects 2024–2025
   notices.
 
