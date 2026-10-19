@@ -1,6 +1,6 @@
 ---
 title: EuroTender CPV
-emoji: 🇪🇺
+emoji: 🏛️
 colorFrom: blue
 colorTo: indigo
 sdk: static

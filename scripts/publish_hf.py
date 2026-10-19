@@ -103,6 +103,7 @@ def main() -> None:
                 repo_type="space",
                 folder_path=root,
                 commit_message=f"EuroTender demo {version}",
+                delete_patterns=["style.css"],  # left over from the Hub's Space template
             )
         print(f"https://huggingface.co/spaces/{SPACE_REPO}")
 
