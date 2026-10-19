@@ -187,13 +187,13 @@ def main() -> None:
     )
     args = parser.parse_args()
     if args.performance_only:
-        results = json.loads((args.out / "metrics.json").read_text())
+        results = json.loads((args.out / "metrics.json").read_text(encoding="utf-8"))
         results["performance"] = performance(args.model, args.data)
         results["model_metadata"] = CpvModel.load(args.model, levels=()).metadata
         (args.out / "metrics.json").write_text(
-            json.dumps(results, indent=2, ensure_ascii=False) + "\n"
+            json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
-        (args.out / "RESULTS.md").write_text(markdown(results))
+        (args.out / "RESULTS.md").write_text(markdown(results), encoding="utf-8")
         return
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -266,8 +266,10 @@ def main() -> None:
     results["performance"] = performance(args.model, args.data)
 
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "metrics.json").write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n")
-    (args.out / "RESULTS.md").write_text(markdown(results))
+    (args.out / "metrics.json").write_text(
+        json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    (args.out / "RESULTS.md").write_text(markdown(results), encoding="utf-8")
     log.info("wrote %s", args.out)
 
 

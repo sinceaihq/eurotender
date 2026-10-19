@@ -120,9 +120,12 @@ def test_harvest_month_writes_manifest_and_resumes(
     m = ted.harvest_month(dt.date(2025, 3, 1), tmp_path)
     assert m.harvested_count == 2
     assert m.total_notice_count == 2
-    with gzip.open(tmp_path / "ted_2025-03.jsonl.gz", "rt") as fh:
+    with gzip.open(tmp_path / "ted_2025-03.jsonl.gz", "rt", encoding="utf-8") as fh:
         assert [json.loads(line)["publication-number"] for line in fh] == ["1-2025", "2-2025"]
-    assert json.loads((tmp_path / "ted_2025-03.manifest.json").read_text())["sha256"] == m.sha256
+    assert (
+        json.loads((tmp_path / "ted_2025-03.manifest.json").read_text(encoding="utf-8"))["sha256"]
+        == m.sha256
+    )
     # Second call is a no-op thanks to the manifest.
     assert ted.harvest_month(dt.date(2025, 3, 1), tmp_path) == m
     assert len(calls) == 1

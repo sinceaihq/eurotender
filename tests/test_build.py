@@ -46,7 +46,7 @@ def raw_notice(
 
 def write_raw(directory: Path, notices: list[dict[str, Any]]) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    with gzip.open(directory / "ted_2025-01.jsonl.gz", "wt") as fh:
+    with gzip.open(directory / "ted_2025-01.jsonl.gz", "wt", encoding="utf-8") as fh:
         for n in notices:
             fh.write(json.dumps(n) + "\n")
     (directory / "ted_2025-01.manifest.json").write_text(
@@ -58,7 +58,8 @@ def write_raw(directory: Path, notices: list[dict[str, Any]]) -> None:
                 "sha256": "x",
                 "finished_at": "now",
             }
-        )
+        ),
+        encoding="utf-8",
     )
 
 
@@ -176,7 +177,7 @@ def test_write_outputs(built: tuple[pd.DataFrame, dict[str, Any], Path], tmp_pat
         part = pd.read_parquet(out / f"{name}.parquet")
         assert "split" not in part.columns
         assert "text_hash" not in part.columns
-    stats = json.loads((out / "stats.json").read_text())
+    stats = json.loads((out / "stats.json").read_text(encoding="utf-8"))
     assert stats["raw_manifests"][0]["month"] == "2025-01"
     assert set(stats["files"]) == {"train.parquet", "validation.parquet", "test.parquet"}
 

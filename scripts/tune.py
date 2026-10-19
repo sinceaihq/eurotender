@@ -84,7 +84,7 @@ def main() -> None:
         "selected": {k: best[k] for k in ("classifier", "alpha")},
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(out, indent=2) + "\n")
+    args.out.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     print("selected", out["selected"])
 
 

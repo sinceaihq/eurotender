@@ -121,7 +121,7 @@ def main() -> None:
     sample_out.to_csv(args.out.with_name("near_duplicate_sample.csv"), index=False)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n")
+    args.out.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(audit, indent=2, ensure_ascii=False))
 
 

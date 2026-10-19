@@ -116,7 +116,7 @@ def main() -> None:
     }
     print(json.dumps(results["e5_small_logreg"]), flush=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(results, indent=2) + "\n")
+    args.out.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

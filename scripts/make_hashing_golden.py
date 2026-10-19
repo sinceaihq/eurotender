@@ -23,7 +23,7 @@ def main() -> None:
         "indices": sorted(counts.indices.tolist()),
     }
     path = Path(__file__).resolve().parents[1] / "tests/hashing_golden.json"
-    path.write_text(json.dumps(out, indent=1) + "\n")
+    path.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

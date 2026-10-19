@@ -46,7 +46,7 @@ def main() -> None:
     web_p = np.array([row[0][1] for row in web])
     y = df.cpv_division.to_numpy(dtype=object)
     size = sum(p.stat().st_size for p in args.web.iterdir() if p.name.startswith("web-model"))
-    meta = json.loads((args.web / "web-model.json").read_text())
+    meta = json.loads((args.web / "web-model.json").read_text(encoding="utf-8"))
     result = {
         "split": args.split,
         "rows": len(texts),
@@ -65,7 +65,7 @@ def main() -> None:
         "node_timing": json.loads(proc.stderr.strip().splitlines()[-1]),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2) + "\n")
+    args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
 
 

@@ -135,16 +135,16 @@ def main() -> None:
     parser.add_argument("--stats", type=Path, required=True)
     parser.add_argument("--model-dir", type=Path, required=True)
     args = parser.parse_args()
-    res = json.loads((args.results / "metrics.json").read_text())
-    stats = json.loads(args.stats.read_text())
-    tuning = json.loads((args.results / "tuning.json").read_text())
-    pilot = json.loads((args.results / "pilot.json").read_text())
-    audit = json.loads((args.results / "data_audit.json").read_text())
+    res = json.loads((args.results / "metrics.json").read_text(encoding="utf-8"))
+    stats = json.loads(args.stats.read_text(encoding="utf-8"))
+    tuning = json.loads((args.results / "tuning.json").read_text(encoding="utf-8"))
+    pilot = json.loads((args.results / "pilot.json").read_text(encoding="utf-8"))
+    audit = json.loads((args.results / "data_audit.json").read_text(encoding="utf-8"))
     emb_path = args.results / "embeddings.json"
-    emb = json.loads(emb_path.read_text()) if emb_path.exists() else None
+    emb = json.loads(emb_path.read_text(encoding="utf-8")) if emb_path.exists() else None
     web_path = args.results / "web.json"
-    web = json.loads(web_path.read_text()) if web_path.exists() else None
-    config = json.loads((args.model_dir / "config.json").read_text())
+    web = json.loads(web_path.read_text(encoding="utf-8")) if web_path.exists() else None
+    config = json.loads((args.model_dir / "config.json").read_text(encoding="utf-8"))
     heads = {h["name"]: h for h in config["heads"]}
     model = CpvModel.load(args.model_dir)
 
@@ -155,7 +155,7 @@ def main() -> None:
     perf = res["performance"]
 
     # ------------------------------------------------------------------ README
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     example = predict_cpv(
         "Development and maintenance of municipal IT systems", top_k=3, model=model
     )
@@ -179,10 +179,10 @@ Single notice on one CPU core: p50 {perf["single_text_latency_ms"]["p50"]:.0f} m
 (+{perf["file_sizes_bytes"]["group.safetensors"] / 1e6:.0f} MB for the group head, fetched on first use).
 """
     readme = fill(readme, "results", headline)
-    (ROOT / "README.md").write_text(readme)
+    (ROOT / "README.md").write_text(readme, encoding="utf-8")
 
     # ------------------------------------------------------------------ REPORT
-    rep = (ROOT / "docs/REPORT.md").read_text()
+    rep = (ROOT / "docs/REPORT.md").read_text(encoding="utf-8")
     rep = fill(rep, "n_rows", f"{stats['rows']:,}")
     rep = fill(
         rep,
@@ -390,7 +390,7 @@ its top-1 accuracy is {pct(web["web_model_top1_accuracy"])} % vs. {pct(web["full
 ([`results/web.json`](../results/web.json)).
 """
     rep = fill(rep, "efficiency", eff)
-    (ROOT / "docs/REPORT.md").write_text(rep)
+    (ROOT / "docs/REPORT.md").write_text(rep, encoding="utf-8")
     print("README.md and docs/REPORT.md updated")
 
 

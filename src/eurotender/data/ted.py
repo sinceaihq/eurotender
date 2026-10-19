@@ -199,7 +199,7 @@ def harvest_month(
     manifest_path = out_dir / f"{stem}.manifest.json"
     if manifest_path.exists():
         log.info("%s already harvested, skipping", stem)
-        return MonthManifest(**json.loads(manifest_path.read_text()))
+        return MonthManifest(**json.loads(manifest_path.read_text(encoding="utf-8")))
 
     query = build_query(month, _next_month(month), notice_types)
     started = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
@@ -233,7 +233,7 @@ def harvest_month(
         finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         user_agent=USER_AGENT,
     )
-    manifest_path.write_text(json.dumps(asdict(manifest), indent=2) + "\n")
+    manifest_path.write_text(json.dumps(asdict(manifest), indent=2) + "\n", encoding="utf-8")
     log.info("%s done: %d notices", stem, count)
     return manifest
 

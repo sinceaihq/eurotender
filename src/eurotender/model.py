@@ -230,7 +230,7 @@ class CpvModel:
             "metadata": self.metadata,
         }
         (directory / CONFIG_NAME).write_text(
-            json.dumps(config, indent=2, ensure_ascii=False) + "\n"
+            json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
 
     @classmethod
@@ -249,7 +249,7 @@ class CpvModel:
         ``directory`` (e.g. from the Hugging Face Hub).
         """
         directory = Path(directory)
-        config = json.loads((directory / CONFIG_NAME).read_text())
+        config = json.loads((directory / CONFIG_NAME).read_text(encoding="utf-8"))
         if config.get("format_version") != FORMAT_VERSION:
             raise ValueError(f"unsupported model format: {config.get('format_version')}")
         main = load_file(str(directory / WEIGHTS_NAME))

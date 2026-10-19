@@ -34,7 +34,7 @@ log = logging.getLogger("train")
 def load_config(path: Path | None) -> TrainConfig:
     if path is None:
         return TrainConfig()
-    raw: dict[str, Any] = json.loads(path.read_text())
+    raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     feats = FeatureConfig.from_dict({**_defaults(FeatureConfig), **raw.pop("features", {})})
     if "levels" in raw:
         raw["levels"] = tuple(raw["levels"])
@@ -67,11 +67,11 @@ def hardware() -> dict[str, Any]:
         "os": platform.platform(),
     }
     try:
-        cpuinfo = Path("/proc/cpuinfo").read_text()
+        cpuinfo = Path("/proc/cpuinfo").read_text(encoding="utf-8")
         model = next(line for line in cpuinfo.splitlines() if line.startswith("model name"))
         info["cpu_model"] = model.split(":", 1)[1].strip()
         info["logical_cpus"] = cpuinfo.count("processor\t:")
-        mem = Path("/proc/meminfo").read_text().splitlines()[0]
+        mem = Path("/proc/meminfo").read_text(encoding="utf-8").splitlines()[0]
         info["memory_kb"] = int(mem.split()[1])
     except (OSError, StopIteration, ValueError):
         pass
@@ -99,7 +99,7 @@ def main() -> None:
     result = fit(train, cfg, validation=validation, log=log.info)
     total = time.perf_counter() - t0
 
-    stats = json.loads((args.data / "stats.json").read_text())
+    stats = json.loads((args.data / "stats.json").read_text(encoding="utf-8"))
     result.model.metadata.update(
         {
             "name": "eurotender-cpv-baseline",

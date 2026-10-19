@@ -44,7 +44,7 @@ def test_hashing_is_stable_across_releases() -> None:
     The expected indices were recorded with scikit-learn 1.9.1. If this test
     fails, a released model would no longer see the features it was trained on.
     """
-    golden = json.loads(Path(__file__).with_name("hashing_golden.json").read_text())
+    golden = json.loads(Path(__file__).with_name("hashing_golden.json").read_text(encoding="utf-8"))
     f = Featurizer(FeatureConfig.from_dict(golden["features"]))
     counts = f.counts([golden["text"]])
     assert sorted(counts.indices.tolist()) == golden["indices"]
@@ -102,9 +102,9 @@ def test_tiny_model_learns_toy_task(tiny_model: CpvModel) -> None:
 def test_load_rejects_wrong_format_version(tiny_model_dir: Path, tmp_path: Path) -> None:
     target = tmp_path / "m"
     shutil.copytree(tiny_model_dir, target)
-    cfg = json.loads((target / CONFIG_NAME).read_text())
+    cfg = json.loads((target / CONFIG_NAME).read_text(encoding="utf-8"))
     cfg["format_version"] = 999
-    (target / CONFIG_NAME).write_text(json.dumps(cfg))
+    (target / CONFIG_NAME).write_text(json.dumps(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="unsupported model format"):
         CpvModel.load(target)
 
@@ -112,9 +112,9 @@ def test_load_rejects_wrong_format_version(tiny_model_dir: Path, tmp_path: Path)
 def test_load_rejects_inconsistent_shapes(tiny_model_dir: Path, tmp_path: Path) -> None:
     target = tmp_path / "m"
     shutil.copytree(tiny_model_dir, target)
-    cfg = json.loads((target / CONFIG_NAME).read_text())
+    cfg = json.loads((target / CONFIG_NAME).read_text(encoding="utf-8"))
     cfg["heads"][0]["classes"] = cfg["heads"][0]["classes"][:-1]
-    (target / CONFIG_NAME).write_text(json.dumps(cfg))
+    (target / CONFIG_NAME).write_text(json.dumps(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="inconsistent shape"):
         CpvModel.load(target)
 
@@ -122,9 +122,9 @@ def test_load_rejects_inconsistent_shapes(tiny_model_dir: Path, tmp_path: Path) 
 def test_load_rejects_feature_config_mismatch(tiny_model_dir: Path, tmp_path: Path) -> None:
     target = tmp_path / "m"
     shutil.copytree(tiny_model_dir, target)
-    cfg = json.loads((target / CONFIG_NAME).read_text())
+    cfg = json.loads((target / CONFIG_NAME).read_text(encoding="utf-8"))
     cfg["features"]["word_bits"] += 1
-    (target / CONFIG_NAME).write_text(json.dumps(cfg))
+    (target / CONFIG_NAME).write_text(json.dumps(cfg), encoding="utf-8")
     with pytest.raises(ValueError, match="IDF size"):
         CpvModel.load(target)
 
@@ -184,7 +184,7 @@ def test_parallel_counts_matches_serial() -> None:
 
 
 def test_heads_are_stored_in_separate_files(tiny_model_dir: Path) -> None:
-    cfg = json.loads((tiny_model_dir / CONFIG_NAME).read_text())
+    cfg = json.loads((tiny_model_dir / CONFIG_NAME).read_text(encoding="utf-8"))
     assert [h["file"] for h in cfg["heads"]] == [WEIGHTS_NAME, "group.safetensors"]
     assert (tiny_model_dir / "group.safetensors").exists()
 

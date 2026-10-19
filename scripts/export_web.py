@@ -73,7 +73,9 @@ def export(model: CpvModel, out: Path, keep: int, levels: list[str]) -> dict[str
         "source_git_commit": model.metadata.get("git_commit"),
     }
     (out / "web-model.bin").write_bytes(bytes(blob))
-    (out / "web-model.json").write_text(json.dumps(meta, ensure_ascii=False) + "\n")
+    (out / "web-model.json").write_text(
+        json.dumps(meta, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return meta
 
 

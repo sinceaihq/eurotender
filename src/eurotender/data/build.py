@@ -232,7 +232,10 @@ def write(df: pd.DataFrame, summary: dict[str, Any], out_dir: Path, raw_dir: Pat
     for name in SPLIT_ORDER:
         part = df[df.split == name][columns].reset_index(drop=True)
         part.to_parquet(out_dir / f"{name}.parquet", index=False, compression="zstd")
-    manifests = [json.loads(p.read_text()) for p in sorted(raw_dir.glob("ted_*.manifest.json"))]
+    manifests = [
+        json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted(raw_dir.glob("ted_*.manifest.json"))
+    ]
     summary["raw_manifests"] = [
         {k: m[k] for k in ("month", "query", "harvested_count", "sha256", "finished_at")}
         for m in manifests
@@ -241,7 +244,9 @@ def write(df: pd.DataFrame, summary: dict[str, Any], out_dir: Path, raw_dir: Pat
         f"{name}.parquet": hashlib.sha256((out_dir / f"{name}.parquet").read_bytes()).hexdigest()
         for name in SPLIT_ORDER
     }
-    (out_dir / "stats.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
+    (out_dir / "stats.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> None:

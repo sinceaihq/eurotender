@@ -498,13 +498,15 @@ def main() -> None:
     parser.add_argument("--model-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    results = json.loads((args.results / "metrics.json").read_text())
-    stats = json.loads(args.stats.read_text())
-    config = json.loads((args.model_dir / "config.json").read_text())
+    results = json.loads((args.results / "metrics.json").read_text(encoding="utf-8"))
+    stats = json.loads(args.stats.read_text(encoding="utf-8"))
+    config = json.loads((args.model_dir / "config.json").read_text(encoding="utf-8"))
     (args.out / "model").mkdir(parents=True, exist_ok=True)
     (args.out / "dataset").mkdir(parents=True, exist_ok=True)
-    (args.out / "model" / "README.md").write_text(render_model_card(results, stats, config))
-    (args.out / "dataset" / "README.md").write_text(render_dataset_card(stats))
+    (args.out / "model" / "README.md").write_text(
+        render_model_card(results, stats, config), encoding="utf-8"
+    )
+    (args.out / "dataset" / "README.md").write_text(render_dataset_card(stats), encoding="utf-8")
     print(f"wrote cards to {args.out}")
 
 
