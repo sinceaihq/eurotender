@@ -21,8 +21,9 @@ tags:
 
 # EuroTender CPV demo
 
-Type the title of a European public tender in any of the 24 official EU
-languages and get ranked CPV division suggestions.
+Type the title of a European public tender in any EU language and get ranked
+CPV division suggestions. The model was evaluated on the 22 official languages
+that TED has enough notices in (not Irish or Maltese).
 
 Inference runs **entirely in your browser** in plain JavaScript (no server, no
 tracking): a line-by-line port of the
