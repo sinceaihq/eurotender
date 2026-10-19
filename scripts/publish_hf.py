@@ -69,8 +69,8 @@ def main() -> None:
         api.create_repo(MODEL_REPO, repo_type="model", private=args.private, exist_ok=True)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ("config.json", "model.safetensors"):
-                shutil.copy(args.model / name, root / name)
+            for src in [args.model / "config.json", *sorted(args.model.glob("*.safetensors"))]:
+                shutil.copy(src, root / src.name)
             shutil.copy(args.cards / "model" / "README.md", root / "README.md")
             for extra in ("metrics.json", "RESULTS.md"):
                 src = args.cards.parent / "results" / extra
