@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from eurotender.evaluation import (
@@ -68,4 +68,5 @@ def test_measure_performance(tiny_model_dir: Path) -> None:
         "model.safetensors",
         "group.safetensors",
     }
-    assert np.isfinite(perf["peak_rss_mb"])
+    if sys.platform != "win32":
+        assert 1 < perf["peak_rss_mb"] < 100_000

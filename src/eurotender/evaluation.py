@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import gc
 import os
-import resource
+import sys
 import time
 from collections import Counter
 from collections.abc import Sequence
@@ -120,8 +120,14 @@ def evaluate_model(
 
 
 def rss_mb() -> float:
-    """Peak resident set size of this process in MB (Linux reports KiB)."""
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    """Peak resident set size of this process in MB, or NaN where unsupported."""
+    try:
+        import resource  # Unix only
+    except ImportError:
+        return float("nan")
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # Linux reports KiB, macOS bytes.
+    return peak / (1024 * 1024) if sys.platform == "darwin" else peak / 1024
 
 
 def measure_performance(
