@@ -390,7 +390,9 @@ label) are removed within a split. Validation and test rows carry two flags:
 - `exact_duplicate_of_earlier_split` – identical normalised text occurs in an
   earlier split ({stats["test_exact_duplicate_of_earlier_split"]:,} test rows);
 - `near_duplicate_of_earlier_split` – identical after removing digits and
-  truncating to 300 characters ({stats["test_near_duplicate_of_earlier_split"]:,} test rows).
+  truncating to 300 characters, or estimated character 5-gram Jaccard
+  similarity ≥ 0.8 with an earlier row (MinHash LSH)
+  ({stats["test_near_duplicate_of_earlier_split"]:,} test rows).
 
 Such repeats are real (annual re-tendering), so we keep them, but report
 metrics with and without them.
@@ -436,7 +438,8 @@ were exact duplicates. Full details: [docs/DATA.md]({GITHUB}/blob/main/docs/DATA
 
 Notices are published by public bodies and mostly describe what is being
 bought, but free text can contain contact details. Before release we replaced
-e-mail addresses, URLs, phone numbers and names introduced by an honorific with
+e-mail addresses (also obfuscated ones such as `name(at)domain.fi`), URLs,
+phone numbers and names introduced by an honorific with
 `[EMAIL]`, `[URL]`, `[PHONE]` and `[NAME]`. Rows affected:
 {", ".join(f"{k}: {v:,}" for k, v in pii.items())}. Buyer names, addresses and
 contact-point fields were never collected. The scrubbing is rule-based and
