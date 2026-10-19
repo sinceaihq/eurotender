@@ -86,6 +86,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    commit = git_commit(Path(__file__).resolve().parents[1])  # the code that trains
     cfg = load_config(args.config)
     log.info("config: %s", json.dumps(cfg.to_dict()))
 
@@ -104,7 +105,7 @@ def main() -> None:
             "name": "eurotender-cpv-baseline",
             "package_version": eurotender.__version__,
             "trained_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-            "git_commit": git_commit(Path(__file__).resolve().parents[1]),
+            "git_commit": commit,
             "dataset": {
                 "files_sha256": stats.get("files"),
                 "splits": stats.get("splits"),
