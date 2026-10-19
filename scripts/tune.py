@@ -28,12 +28,9 @@ from eurotender.training import (
 )
 
 GRID: list[dict[str, Any]] = [
-    {"classifier": "sgd_hinge", "alpha": 2e-6},
-    {"classifier": "sgd_hinge", "alpha": 5e-6},
-    {"classifier": "sgd_hinge", "alpha": 1e-5},
-    {"classifier": "sgd_modified_huber", "alpha": 2e-6},
-    {"classifier": "sgd_modified_huber", "alpha": 5e-6},
-    {"classifier": "sgd_modified_huber", "alpha": 1e-5},
+    {"classifier": loss, "alpha": alpha}
+    for loss in ("sgd_hinge", "sgd_modified_huber")
+    for alpha in (5e-7, 1e-6, 2e-6, 5e-6)
 ]
 
 
