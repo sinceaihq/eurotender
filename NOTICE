@@ -1,0 +1,19 @@
+EuroTender
+Copyright 2026 Since AI ry
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party content
+-------------------
+
+* Common Procurement Vocabulary (CPV 2008) labels in
+  src/eurotender/resources/cpv_labels.json.gz are derived from the eForms SDK
+  code list published by the Publications Office of the European Union
+  (https://github.com/OP-TED/eForms-SDK), licensed under CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/). Converted from Genericode
+  XML to JSON; content unchanged.
+
+* Training data for the released models comes from Tenders Electronic Daily
+  (TED), (c) European Union, https://ted.europa.eu. TED notices may be freely
+  reused for commercial or non-commercial purposes
+  (https://ted.europa.eu/en/legal-notice).

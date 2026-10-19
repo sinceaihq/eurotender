@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Data and models are published on the Hugging Face Hub, not in git
+/data/
+/models/
+*.parquet
+*.jsonl.gz
+*.safetensors
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
